@@ -120,6 +120,7 @@ func createNPIndx(data []string) (p NPIndx, err error) {
 	return
 }
 
+// Updates structure. Информация о частичном обновлении.
 type Updates struct {
 	Date          time.Time
 	Url           string
