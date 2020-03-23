@@ -42,7 +42,7 @@ func (r regions) FindCode(region string, autonomy string) int {
 	return code
 }
 
-// Список регионов
+// Regions содержит список регионов.
 var Regions = regions{
 	{Name: "МОСКВА", Code: 77,},
 	{Name: "МОСКОВСКАЯ ОБЛАСТЬ", Code: 50,},

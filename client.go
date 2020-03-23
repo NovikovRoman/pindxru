@@ -18,11 +18,12 @@ const (
 	fileEncoding   = "cp866"
 )
 
+// Client structure.
 type Client struct {
 	*http.Client
 }
 
-// New create new pindxru Client.
+// NewClient create new pindxru Client.
 func NewClient(transport *http.Transport) *Client {
 	c := &http.Client{}
 	if transport != nil {
@@ -51,7 +52,7 @@ func (c Client) GetLastModified() (lastMod time.Time, err error) {
 	return
 }
 
-// GetPostIndexes возвращает все почтовые индексы из web-справочника.
+// All возвращает все почтовые индексы из web-справочника.
 func (c Client) All() (indexes []PIndx, lastMod time.Time, err error) {
 	var b []byte
 	if b, lastMod, err = c.downloadZip(fullZipURL); err != nil {
@@ -202,8 +203,7 @@ func (c Client) downloadZip(u string) (b []byte, lastMod time.Time, err error) {
 
 	lastMod, err = time.Parse(time.RFC1123, resp.Header.Get("Last-Modified"))
 	b, err = getBody(resp)
-
-	return b, lastMod, nil
+	return
 }
 
 // unzipPIndex распаковывает индексы из zip-файла.
