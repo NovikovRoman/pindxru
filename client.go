@@ -63,10 +63,10 @@ func (c Client) All() (indexes []PIndx, lastMod time.Time, err error) {
 	return
 }
 
-// AllUpdates возвращает все почтовые индексы из web-справочника, если есть обновления.
-func (c Client) AllUpdates(lastModified time.Time) (indexes []PIndx, lastMod time.Time, err error) {
+// AllUpdated возвращает все почтовые индексы из web-справочника, если есть обновления.
+func (c Client) AllUpdated(lastModified time.Time) (indexes []PIndx, lastMod time.Time, err error) {
 	var ok bool
-	if ok, err = c.isUpdates(lastModified); err != nil || !ok {
+	if ok, err = c.hasUpdates(lastModified); err != nil || !ok {
 		return
 	}
 	return c.All()
@@ -82,9 +82,9 @@ func (c Client) ZipAll(filename string, perm os.FileMode) (lastMod time.Time, er
 	return
 }
 
-// ZipAllUpdates загружает zip-файл со всеми почтовыми индексами, если есть обновления.
-func (c Client) ZipAllUpdates(fname string, perm os.FileMode, lastMod time.Time) (lm time.Time, ok bool, err error) {
-	if ok, err = c.isUpdates(lastMod); err != nil || !ok {
+// ZipAllUpdated загружает zip-файл со всеми почтовыми индексами, если есть обновления.
+func (c Client) ZipAllUpdated(fname string, perm os.FileMode, lastMod time.Time) (lm time.Time, ok bool, err error) {
+	if ok, err = c.hasUpdates(lastMod); err != nil || !ok {
 		return
 	}
 	lm, err = c.ZipAll(fname, perm)
@@ -107,9 +107,9 @@ func (c Client) DbfAll(fname string, perm os.FileMode) (lastMod time.Time, err e
 	return
 }
 
-// DbfAllUpdates загружает dbf-файл со всеми почтовыми индексами, если есть обновления.
-func (c Client) DbfAllUpdates(fname string, perm os.FileMode, lastMod time.Time) (lm time.Time, ok bool, err error) {
-	if ok, err = c.isUpdates(lastMod); err != nil || !ok {
+// DbfAllUpdated загружает dbf-файл со всеми почтовыми индексами, если есть обновления.
+func (c Client) DbfAllUpdated(fname string, perm os.FileMode, lastMod time.Time) (lm time.Time, ok bool, err error) {
+	if ok, err = c.hasUpdates(lastMod); err != nil || !ok {
 		return
 	}
 	lm, err = c.DbfAll(fname, perm)
@@ -117,7 +117,7 @@ func (c Client) DbfAllUpdates(fname string, perm os.FileMode, lastMod time.Time)
 	return
 }
 
-// Updates возвращает список дат обновлений начиная от даты >= lastModified.
+// Updates возвращает список обновлений начиная от даты >= lastModified.
 func (c Client) Updates(lastModified *time.Time) (updates []Updates, err error) {
 	resp, err := c.Get(listUpdatesURL)
 	if err != nil {
@@ -182,8 +182,8 @@ func (c Client) DbfNPIndx(u string, filename string, perm os.FileMode) (lastMod 
 	return
 }
 
-// isUpdates есть ли обновление.
-func (c Client) isUpdates(lastModified time.Time) (ok bool, err error) {
+// hasUpdates есть ли обновление.
+func (c Client) hasUpdates(lastModified time.Time) (ok bool, err error) {
 	var lastMod time.Time
 	lastMod, err = c.GetLastModified()
 	if err != nil {

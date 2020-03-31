@@ -24,13 +24,13 @@ func Test_All(t *testing.T) {
 
 func Test_AllUpdates(t *testing.T) {
 	// (!) обновлений нет
-	u, d, err := cTest.AllUpdates(time.Now().Add(time.Hour * 1000))
+	u, d, err := cTest.AllUpdated(time.Now().Add(time.Hour * 1000))
 	require.Nil(t, err)
 	require.IsType(t, d, time.Time{})
 	require.True(t, d.IsZero())
 	require.Len(t, u, 0)
 
-	u, d, err = cTest.AllUpdates(time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC))
+	u, d, err = cTest.AllUpdated(time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC))
 	require.Nil(t, err)
 	require.IsType(t, d, time.Time{})
 	require.False(t, d.IsZero())
@@ -86,13 +86,13 @@ func Test_ZipAllUpdates(t *testing.T) {
 	filename := "zipallupdates-" + testZipFile
 	// (!) обновлений нет
 	d := time.Now().Add(time.Hour * 1000)
-	lastMod, ok, err := cTest.ZipAllUpdates(filename, os.ModePerm, d)
+	lastMod, ok, err := cTest.ZipAllUpdated(filename, os.ModePerm, d)
 	require.Nil(t, err)
 	require.False(t, ok)
 	require.True(t, lastMod.IsZero())
 
 	d = time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC)
-	lastMod, ok, err = cTest.ZipAllUpdates(filename, os.ModePerm, d)
+	lastMod, ok, err = cTest.ZipAllUpdated(filename, os.ModePerm, d)
 	require.Nil(t, err)
 	require.True(t, ok)
 	require.False(t, lastMod.IsZero())
@@ -127,13 +127,13 @@ func Test_DbfAllUpdates(t *testing.T) {
 	filename := "dbfallupdates-" + testDbfFile
 	// (!) обновлений нет
 	d := time.Now().Add(time.Hour * 1000)
-	lastMod, ok, err := cTest.DbfAllUpdates(filename, os.ModePerm, d)
+	lastMod, ok, err := cTest.DbfAllUpdated(filename, os.ModePerm, d)
 	require.Nil(t, err)
 	require.False(t, ok)
 	require.True(t, lastMod.IsZero())
 
 	d = time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC)
-	lastMod, ok, err = cTest.DbfAllUpdates(filename, os.ModePerm, d)
+	lastMod, ok, err = cTest.DbfAllUpdated(filename, os.ModePerm, d)
 	require.Nil(t, err)
 	require.True(t, ok)
 	require.False(t, lastMod.IsZero())
