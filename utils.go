@@ -71,7 +71,7 @@ func getBody(resp *http.Response) (body []byte, err error) {
 	return
 }
 
-func getListUpdates(b []byte) (updates []Updates, err error) {
+func getListUpdates(b []byte) (updates []Package, err error) {
 	utf8, err := charset.NewReader(bytes.NewReader(b), "utf8")
 	if err != nil {
 		return
@@ -104,7 +104,7 @@ func getListUpdates(b []byte) (updates []Updates, err error) {
 	})
 
 	rows := table.Find("table tr")
-	updates = make([]Updates, rows.Length()-1) // тк первая строка заголовочная
+	updates = make([]Package, rows.Length()-1) // тк первая строка заголовочная
 	rows.EachWithBreak(func(i int, selection *goquery.Selection) bool {
 		if i == 0 {
 			return true
@@ -117,7 +117,7 @@ func getListUpdates(b []byte) (updates []Updates, err error) {
 		}
 		index := i - 1
 
-		updates[index] = Updates{}
+		updates[index] = Package{}
 		cols.Each(func(j int, selection *goquery.Selection) {
 			switch j {
 			case 0:

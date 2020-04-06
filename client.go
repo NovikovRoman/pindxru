@@ -54,9 +54,19 @@ func (c Client) GetLastModified() (lastMod time.Time, err error) {
 	return
 }
 
-// All возвращает все почтовые индексы из web-справочника.
-func (c Client) All() (indexes []PIndx, lastMod time.Time, err error) {
-	var b []byte
+// Indexes возвращает все почтовые индексы из web-справочника.
+func (c Client) Indexes(lastModified *time.Time) (indexes []PIndx, lastMod time.Time, err error) {
+	var (
+		b  []byte
+		ok bool
+	)
+
+	if lastModified != nil {
+		if ok, err = c.hasUpdates(*lastModified); err != nil || !ok {
+			return
+		}
+	}
+
 	if b, lastMod, err = c.downloadZip(fullZipURL); err != nil {
 		return
 	}
@@ -65,39 +75,34 @@ func (c Client) All() (indexes []PIndx, lastMod time.Time, err error) {
 	return
 }
 
-// AllUpdated возвращает все почтовые индексы из web-справочника, если есть обновления.
-func (c Client) AllUpdated(lastModified time.Time) (indexes []PIndx, lastMod time.Time, err error) {
-	var ok bool
-	if ok, err = c.hasUpdates(lastModified); err != nil || !ok {
-		return
+// IndexesZip загружает zip-файл со всеми почтовыми индексами.
+func (c Client) IndexesZip(fname string, perm os.FileMode, lastMod *time.Time) (modify time.Time, ok bool, err error) {
+	if lastMod != nil {
+		if ok, err = c.hasUpdates(*lastMod); err != nil || !ok {
+			return
+		}
 	}
-	return c.All()
-}
 
-// ZipAll загружает zip-файл со всеми почтовыми индексами.
-func (c Client) ZipAll(filename string, perm os.FileMode) (lastMod time.Time, err error) {
+	ok = true
 	var b []byte
-	if b, lastMod, err = c.downloadZip(fullZipURL); err != nil {
+	if b, modify, err = c.downloadZip(fullZipURL); err != nil {
 		return
 	}
-	err = ioutil.WriteFile(filename, b, perm)
+	err = ioutil.WriteFile(fname, b, perm)
 	return
 }
 
-// ZipAllUpdated загружает zip-файл со всеми почтовыми индексами, если есть обновления.
-func (c Client) ZipAllUpdated(fname string, perm os.FileMode, lastMod time.Time) (lm time.Time, ok bool, err error) {
-	if ok, err = c.hasUpdates(lastMod); err != nil || !ok {
-		return
+// IndexesDbf загружает dbf-файл со всеми почтовыми индексами.
+func (c Client) IndexesDbf(fname string, perm os.FileMode, lastMod *time.Time) (modify time.Time, ok bool, err error) {
+	if lastMod != nil {
+		if ok, err = c.hasUpdates(*lastMod); err != nil || !ok {
+			return
+		}
 	}
-	lm, err = c.ZipAll(fname, perm)
-	ok = err == nil
-	return
-}
 
-// DbfAll загружает dbf-файл со всеми почтовыми индексами.
-func (c Client) DbfAll(fname string, perm os.FileMode) (lastMod time.Time, err error) {
+	ok = true
 	var b []byte
-	if b, lastMod, err = c.downloadZip(fullZipURL); err != nil {
+	if b, modify, err = c.downloadZip(fullZipURL); err != nil {
 		return
 	}
 
@@ -109,18 +114,8 @@ func (c Client) DbfAll(fname string, perm os.FileMode) (lastMod time.Time, err e
 	return
 }
 
-// DbfAllUpdated загружает dbf-файл со всеми почтовыми индексами, если есть обновления.
-func (c Client) DbfAllUpdated(fname string, perm os.FileMode, lastMod time.Time) (lm time.Time, ok bool, err error) {
-	if ok, err = c.hasUpdates(lastMod); err != nil || !ok {
-		return
-	}
-	lm, err = c.DbfAll(fname, perm)
-	ok = err == nil
-	return
-}
-
-// Updates возвращает список обновлений начиная от даты >= lastModified.
-func (c Client) Updates(lastModified *time.Time) (updates []Updates, err error) {
+// GetPackages возвращает список обновлений начиная от даты >= lastModified.
+func (c Client) GetPackages(lastModified *time.Time) (packages []Package, err error) {
 	resp, err := c.httpClient.Get(listUpdatesURL)
 	if err != nil {
 		return
@@ -136,43 +131,43 @@ func (c Client) Updates(lastModified *time.Time) (updates []Updates, err error) 
 		return
 	}
 
-	updates = []Updates{}
+	packages = []Package{}
 	for _, i := range l {
 		if lastModified != nil && i.Date.Before(*lastModified) {
 			continue
 		}
 
-		updates = append(updates, i)
+		packages = append(packages, i)
 	}
 
 	return
 }
 
-// GetNPIndxes возвращает изменения, если есть
-func (c Client) GetNPIndxes(u string) (indexes []NPIndx, lastMod time.Time, err error) {
+// GetPackageIndexes получает изменения.
+func (c Client) GetPackageIndexes(pack *Package) (lastMod time.Time, err error) {
 	var b []byte
-	if b, lastMod, err = c.downloadZip(u); err != nil {
+	if b, lastMod, err = c.downloadZip(pack.Url); err != nil {
 		return
 	}
 
-	indexes, err = c.unzipNPIndx(b)
-	return indexes, lastMod, err
+	pack.Indexes, err = c.unzipNPIndx(b)
+	return lastMod, err
 }
 
-// ZipNPIndx загружает zip-файл с изменнными почтовыми индексами.
-func (c Client) ZipNPIndx(u string, filename string, perm os.FileMode) (lastMod time.Time, err error) {
+// PackageZip загружает zip-файл пакета изменений.
+func (c Client) PackageZip(pack Package, filename string, perm os.FileMode) (lastMod time.Time, err error) {
 	var b []byte
-	if b, lastMod, err = c.downloadZip(u); err != nil {
+	if b, lastMod, err = c.downloadZip(pack.Url); err != nil {
 		return
 	}
 	err = ioutil.WriteFile(filename, b, perm)
 	return
 }
 
-// DbfNPIndx загружает zip-файл с изменнными почтовыми индексами.
-func (c Client) DbfNPIndx(u string, filename string, perm os.FileMode) (lastMod time.Time, err error) {
+// PackageDbf загружает dbf-файл пакета изменений.
+func (c Client) PackageDbf(pack Package, filename string, perm os.FileMode) (lastMod time.Time, err error) {
 	var b []byte
-	if b, lastMod, err = c.downloadZip(u); err != nil {
+	if b, lastMod, err = c.downloadZip(pack.Url); err != nil {
 		return
 	}
 

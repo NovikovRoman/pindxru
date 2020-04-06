@@ -3,6 +3,7 @@ package pindxru
 import (
 	"github.com/stretchr/testify/require"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -14,176 +15,118 @@ func Test_GetLastModified(t *testing.T) {
 	require.False(t, d.IsZero())
 }
 
-func Test_All(t *testing.T) {
-	u, d, err := cTest.All()
+func Test_Indexes(t *testing.T) {
+	u, d, err := cTest.Indexes(nil)
 	require.Nil(t, err)
 	require.IsType(t, d, time.Time{})
 	require.False(t, d.IsZero())
 	require.True(t, len(u) > 10000)
-}
 
-func Test_AllUpdates(t *testing.T) {
 	// (!) обновлений нет
-	u, d, err := cTest.AllUpdated(time.Now().Add(time.Hour * 1000))
+	lastMod := time.Now().Add(time.Hour * 1000)
+	u, d, err = cTest.Indexes(&lastMod)
 	require.Nil(t, err)
 	require.IsType(t, d, time.Time{})
 	require.True(t, d.IsZero())
 	require.Len(t, u, 0)
 
-	u, d, err = cTest.AllUpdated(time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC))
+	lastMod = time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC)
+	u, d, err = cTest.Indexes(&lastMod)
 	require.Nil(t, err)
 	require.IsType(t, d, time.Time{})
 	require.False(t, d.IsZero())
 	require.True(t, len(u) > 10000)
 }
 
-func Test_Updates(t *testing.T) {
-	// (!) обновлений нет
-	d := time.Now().Add(time.Hour * 1000)
-	u, err := cTest.Updates(&d)
+func Test_IndexesZip(t *testing.T) {
+	filename := filepath.Join(testdata, "indexes-"+testZipFile)
+	lastMod, ok, err := cTest.IndexesZip(filename, os.ModePerm, nil)
 	require.Nil(t, err)
-	require.Len(t, u, 0)
-
-	d = time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC)
-	u, err = cTest.Updates(&d)
-	require.Nil(t, err)
-	require.True(t, len(u) > 0)
-
-	for _, i := range u {
-		require.False(t, i.Date.IsZero())
-		require.True(t, i.NumberRecords > 0)
-	}
-}
-
-func Test_GetNPIndxes(t *testing.T) {
-	d := time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC)
-	u, err := cTest.Updates(&d)
-	require.Nil(t, err)
-
-	indexes, lastMod, err := cTest.GetNPIndxes(u[0].Url)
-	require.Nil(t, err)
-	require.False(t, lastMod.IsZero())
-	require.True(t, len(indexes) > 0)
-}
-
-func Test_ZipAll(t *testing.T) {
-	filename := "zipall-" + testZipFile
-	lastMod, err := cTest.ZipAll(filename, os.ModePerm)
-	require.Nil(t, err)
+	require.True(t, ok)
 	require.False(t, lastMod.IsZero())
 
-	f, err := os.Open(filename)
-	require.Nil(t, err)
-	fi, err := f.Stat()
-	require.Nil(t, err)
-	require.True(t, fi.Size() > 0)
+	testCheckFile(t, filename)
 
-	err = os.Remove(filename)
-	require.Nil(t, err)
-}
-
-func Test_ZipAllUpdates(t *testing.T) {
-	filename := "zipallupdates-" + testZipFile
+	filename = filepath.Join(testdata, "indexesWithDate-"+testZipFile)
 	// (!) обновлений нет
 	d := time.Now().Add(time.Hour * 1000)
-	lastMod, ok, err := cTest.ZipAllUpdated(filename, os.ModePerm, d)
+	lastMod, ok, err = cTest.IndexesZip(filename, os.ModePerm, &d)
 	require.Nil(t, err)
 	require.False(t, ok)
 	require.True(t, lastMod.IsZero())
 
 	d = time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC)
-	lastMod, ok, err = cTest.ZipAllUpdated(filename, os.ModePerm, d)
+	lastMod, ok, err = cTest.IndexesZip(filename, os.ModePerm, &d)
 	require.Nil(t, err)
 	require.True(t, ok)
 	require.False(t, lastMod.IsZero())
 
-	f, err := os.Open(filename)
-	require.Nil(t, err)
-	fi, err := f.Stat()
-	require.Nil(t, err)
-	require.True(t, fi.Size() > 0)
-
-	err = os.Remove(filename)
-	require.Nil(t, err)
+	testCheckFile(t, filename)
 }
 
-func Test_DbfAll(t *testing.T) {
-	filename := "dbfall-" + testDbfFile
-	lastMod, err := cTest.DbfAll(filename, os.ModePerm)
+func Test_IndexesDbf(t *testing.T) {
+	filename := filepath.Join(testdata, "indexes-"+testDbfFile)
+	lastMod, ok, err := cTest.IndexesDbf(filename, os.ModePerm, nil)
 	require.Nil(t, err)
+	require.True(t, ok)
 	require.False(t, lastMod.IsZero())
 
-	f, err := os.Open(filename)
-	require.Nil(t, err)
-	fi, err := f.Stat()
-	require.Nil(t, err)
-	require.True(t, fi.Size() > 0)
+	testCheckFile(t, filename)
 
-	err = os.Remove(filename)
-	require.Nil(t, err)
-}
-
-func Test_DbfAllUpdates(t *testing.T) {
-	filename := "dbfallupdates-" + testDbfFile
+	filename = filepath.Join(testdata, "indexesWithDate-"+testDbfFile)
 	// (!) обновлений нет
 	d := time.Now().Add(time.Hour * 1000)
-	lastMod, ok, err := cTest.DbfAllUpdated(filename, os.ModePerm, d)
+	lastMod, ok, err = cTest.IndexesDbf(filename, os.ModePerm, &d)
 	require.Nil(t, err)
 	require.False(t, ok)
 	require.True(t, lastMod.IsZero())
 
 	d = time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC)
-	lastMod, ok, err = cTest.DbfAllUpdated(filename, os.ModePerm, d)
+	lastMod, ok, err = cTest.IndexesDbf(filename, os.ModePerm, &d)
 	require.Nil(t, err)
 	require.True(t, ok)
 	require.False(t, lastMod.IsZero())
 
-	f, err := os.Open(filename)
-	require.Nil(t, err)
-	fi, err := f.Stat()
-	require.Nil(t, err)
-	require.True(t, fi.Size() > 0)
-
-	err = os.Remove(filename)
-	require.Nil(t, err)
+	testCheckFile(t, filename)
 }
 
-func Test_ZipNPIndx(t *testing.T) {
-	d := time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC)
-	u, err := cTest.Updates(&d)
+func Test_Packages(t *testing.T) {
+	// (!) обновлений нет
+	d := time.Now().Add(time.Hour * 1000)
+	pack, err := cTest.GetPackages(&d)
 	require.Nil(t, err)
+	require.Len(t, pack, 0)
 
-	filename := "zipNPIndx-" + testZipFile
-	lastMod, err := cTest.ZipNPIndx(u[0].Url, filename, os.ModePerm)
+	lastMod, err := cTest.GetPackageIndexes(&testPackages[0])
+	require.Nil(t, err)
+	require.False(t, lastMod.IsZero())
+	require.True(t, len(testPackages[0].Indexes) > 0)
+}
+
+func Test_PackageZip(t *testing.T) {
+	filename := filepath.Join(testdata, "package-"+testZipFile)
+	lastMod, err := cTest.PackageZip(testPackages[0], filename, os.ModePerm)
 	require.Nil(t, err)
 	require.False(t, lastMod.IsZero())
 
-	f, err := os.Open(filename)
-	require.Nil(t, err)
-	fi, err := f.Stat()
-	require.Nil(t, err)
-	require.True(t, fi.Size() > 0)
-
-	err = os.Remove(filename)
-	require.Nil(t, err)
+	testCheckFile(t, filename)
 }
 
-func Test_DbfNPIndx(t *testing.T) {
-	d := time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC)
-	u, err := cTest.Updates(&d)
-	require.Nil(t, err)
-
-	filename := "dbfNPIndx-" + testZipFile
-	lastMod, err := cTest.DbfNPIndx(u[0].Url, filename, os.ModePerm)
+func Test_PackageDbf(t *testing.T) {
+	filename := filepath.Join(testdata, "package-"+testDbfFile)
+	lastMod, err := cTest.PackageDbf(testPackages[0], filename, os.ModePerm)
 	require.Nil(t, err)
 	require.False(t, lastMod.IsZero())
 
+	testCheckFile(t, filename)
+}
+
+func testCheckFile(t *testing.T, filename string) {
 	f, err := os.Open(filename)
 	require.Nil(t, err)
 	fi, err := f.Stat()
 	require.Nil(t, err)
 	require.True(t, fi.Size() > 0)
 
-	err = os.Remove(filename)
-	require.Nil(t, err)
+	require.Nil(t, os.Remove(filename))
 }

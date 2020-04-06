@@ -120,9 +120,10 @@ func createNPIndx(data []string) (p NPIndx, err error) {
 	return
 }
 
-// Updates structure. Информация о частичном обновлении.
-type Updates struct {
+// Package structure. Информация о частичном обновлении.
+type Package struct {
 	Date          time.Time
 	Url           string
 	NumberRecords int
+	Indexes       []NPIndx
 }
