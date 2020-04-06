@@ -20,7 +20,8 @@ const (
 
 // Client structure.
 type Client struct {
-	*http.Client
+	httpClient *http.Client
+	transport  *http.Transport
 }
 
 // NewClient create new pindxru Client.
@@ -31,14 +32,15 @@ func NewClient(transport *http.Transport) *Client {
 	}
 
 	return &Client{
-		Client: c,
+		httpClient: c,
+		transport:  transport,
 	}
 }
 
 // GetLastModified возвращает дату последнего обновления из web-справочника.
 func (c Client) GetLastModified() (lastMod time.Time, err error) {
 	var resp *http.Response
-	if resp, err = c.Head(fullZipURL); err != nil {
+	if resp, err = c.httpClient.Head(fullZipURL); err != nil {
 		return
 	}
 
@@ -119,7 +121,7 @@ func (c Client) DbfAllUpdated(fname string, perm os.FileMode, lastMod time.Time)
 
 // Updates возвращает список обновлений начиная от даты >= lastModified.
 func (c Client) Updates(lastModified *time.Time) (updates []Updates, err error) {
-	resp, err := c.Get(listUpdatesURL)
+	resp, err := c.httpClient.Get(listUpdatesURL)
 	if err != nil {
 		return
 	}
@@ -196,7 +198,7 @@ func (c Client) hasUpdates(lastModified time.Time) (ok bool, err error) {
 
 // downloadZip загружает zip-файл из web-справочника.
 func (c Client) downloadZip(u string) (b []byte, lastMod time.Time, err error) {
-	resp, err := c.Get(u)
+	resp, err := c.httpClient.Get(u)
 	if err != nil {
 		return
 	}
