@@ -46,3 +46,13 @@ func TestRegions_FindCode(t *testing.T) {
 	code = Regions.FindCode("", "")
 	require.Equal(t, code, 0)
 }
+
+func TestRegions_FindRegionCodeByIndex(t *testing.T) {
+	code, err := FindRegionCodeByIndex("Тюменская область")
+	require.NotNil(t, err)
+	require.Equal(t, code, 0)
+
+	code, err = FindRegionCodeByIndex("165")
+	require.Nil(t, err)
+	require.Equal(t, code, 29)
+}
