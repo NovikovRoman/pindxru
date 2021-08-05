@@ -130,3 +130,9 @@ func testCheckFile(t *testing.T, filename string) {
 
 	require.Nil(t, os.Remove(filename))
 }
+
+func TestClient_getFullZipURL(t *testing.T) {
+	err := cTest.getFullZipURL()
+	require.Nil(t, err)
+	require.True(t, cTest.fullZipURL != "")
+}

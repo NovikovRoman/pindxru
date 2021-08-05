@@ -8,9 +8,14 @@ import (
 )
 
 func Test_getListUpdates(t *testing.T) {
-	b, err := ioutil.ReadFile(filepath.Join(testdata, "page.htm"))
+	var (
+		err error
+		b   []byte
+		u   []Package
+	)
+	b, err = ioutil.ReadFile(filepath.Join(testdata, "page.htm"))
 	require.Nil(t, err)
-	u, err := getListUpdates(b)
+	u, err = getListUpdates(b)
 	require.Nil(t, err)
-	require.Len(t, u, 5)
+	require.Len(t, u, 14)
 }

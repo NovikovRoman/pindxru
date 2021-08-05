@@ -3,6 +3,8 @@ package pindxru
 import (
 	"archive/zip"
 	"bytes"
+	"errors"
+	"fmt"
 	"github.com/LindsayBradford/go-dbf/godbf"
 	"io/ioutil"
 	"net/http"
@@ -12,9 +14,9 @@ import (
 )
 
 const (
-	rootURL        = "https://vinfo.russianpost.ru/database"
-	fullZipURL     = rootURL + "/PIndx.zip"
-	listUpdatesURL = rootURL + "/ops.html"
+	rootURL = "https://www.pochta.ru"
+	// fullZipURL     = rootURL + "/documents/10231/6755366698/PIndx.zip/912561e7-9221-49d7-9fc9-5673eb04cd40" //"/PIndx.zip"*/
+	listUpdatesURL = rootURL + "/database/ops"
 	fileEncoding   = "cp866"
 )
 
@@ -22,6 +24,8 @@ const (
 type Client struct {
 	httpClient *http.Client
 	transport  *http.Transport
+	page       []byte
+	fullZipURL string
 }
 
 // NewClient create new pindxru Client.
@@ -39,18 +43,13 @@ func NewClient(transport *http.Transport) *Client {
 
 // GetLastModified возвращает дату последнего обновления из web-справочника.
 func (c Client) GetLastModified() (lastMod time.Time, err error) {
-	var resp *http.Response
-	if resp, err = c.httpClient.Head(fullZipURL); err != nil {
+	var packages []Package
+
+	if packages, err = c.GetPackages(nil); err != nil || len(packages) == 0 {
 		return
 	}
 
-	defer func() {
-		if derr := resp.Body.Close(); derr != nil {
-			err = derr
-		}
-	}()
-
-	lastMod, err = time.Parse(time.RFC1123, resp.Header.Get("Last-Modified"))
+	lastMod = packages[len(packages)-1].Date
 	return
 }
 
@@ -67,7 +66,11 @@ func (c Client) Indexes(lastModified *time.Time) (indexes []PIndx, lastMod time.
 		}
 	}
 
-	if b, lastMod, err = c.downloadZip(fullZipURL); err != nil {
+	if err = c.getFullZipURL(); err != nil {
+		return
+	}
+
+	if b, lastMod, err = c.downloadZip(c.fullZipURL); err != nil {
 		return
 	}
 
@@ -83,9 +86,13 @@ func (c Client) IndexesZip(fname string, perm os.FileMode, lastMod *time.Time) (
 		}
 	}
 
+	if err = c.getFullZipURL(); err != nil {
+		return
+	}
+
 	ok = true
 	var b []byte
-	if b, modify, err = c.downloadZip(fullZipURL); err != nil {
+	if b, modify, err = c.downloadZip(c.fullZipURL); err != nil {
 		return
 	}
 	err = ioutil.WriteFile(fname, b, perm)
@@ -100,9 +107,13 @@ func (c Client) IndexesDbf(fname string, perm os.FileMode, lastMod *time.Time) (
 		}
 	}
 
+	if err = c.getFullZipURL(); err != nil {
+		return
+	}
+
 	ok = true
 	var b []byte
-	if b, modify, err = c.downloadZip(fullZipURL); err != nil {
+	if b, modify, err = c.downloadZip(c.fullZipURL); err != nil {
 		return
 	}
 
@@ -116,18 +127,15 @@ func (c Client) IndexesDbf(fname string, perm os.FileMode, lastMod *time.Time) (
 
 // GetPackages возвращает список обновлений начиная от даты >= lastModified.
 func (c Client) GetPackages(lastModified *time.Time) (packages []Package, err error) {
-	resp, err := c.httpClient.Get(listUpdatesURL)
-	if err != nil {
+	var (
+		l []Package
+	)
+
+	if err = c.loadPage(); err != nil {
 		return
 	}
 
-	body, err := getBody(resp)
-	if err != nil {
-		return
-	}
-
-	l, err := getListUpdates(body)
-	if err != nil {
+	if l, err = getListUpdates(c.page); err != nil {
 		return
 	}
 
@@ -176,6 +184,44 @@ func (c Client) PackageDbf(pack Package, filename string, perm os.FileMode) (las
 	}
 
 	err = ioutil.WriteFile(filename, b, perm)
+	return
+}
+
+func (c *Client) loadPage() (err error) {
+	var (
+		resp *http.Response
+	)
+
+	if len(c.page) == 0 {
+		if resp, err = c.httpClient.Get(listUpdatesURL); err != nil {
+			return
+		}
+
+		if c.page, err = getBody(resp); err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+func (c *Client) getFullZipURL() (err error) {
+	if c.fullZipURL != "" {
+		return
+	}
+
+	if err = c.loadPage(); err != nil {
+		return
+	}
+
+	m := regexp.MustCompile(`(?si)<a\s+href="([^"]+)"[^>]*>\s*Эталонный\s+справочник\s+почтовых\s+индексов`).
+		FindAllSubmatch(c.page, 1)
+	if len(m) < 1 {
+		err = errors.New("Не найдена ссылка на общий zip-файл. ")
+		return
+	}
+
+	c.fullZipURL = fmt.Sprintf("%s%s", rootURL, m[0][1])
 	return
 }
 

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/LindsayBradford/go-dbf/godbf"
 	"github.com/PuerkitoBio/goquery"
-	"golang.org/x/net/html/charset"
 	"io/ioutil"
 	"net/http"
 	"regexp"
@@ -72,38 +71,12 @@ func getBody(resp *http.Response) (body []byte, err error) {
 }
 
 func getListUpdates(b []byte) (updates []Package, err error) {
-	utf8, err := charset.NewReader(bytes.NewReader(b), "utf8")
-	if err != nil {
-		return
-	}
-
-	if b, err = ioutil.ReadAll(utf8); err != nil {
-		return
-	}
-
 	var doc *goquery.Document
 	if doc, err = goquery.NewDocumentFromReader(bytes.NewReader(b)); err != nil {
 		return
 	}
 
-	table := &goquery.Selection{}
-	doc.Find("table:last-child tr").EachWithBreak(func(i int, selection *goquery.Selection) bool {
-		if i != 1 {
-			return true
-		}
-
-		selection.Find("table table").EachWithBreak(func(i int, selection *goquery.Selection) bool {
-			if i == 2 {
-				table = selection
-				return false
-			}
-			return true
-		})
-
-		return false
-	})
-
-	rows := table.Find("table tr")
+	rows := doc.Find("article.page-help-article__content table").First().Find("tr")
 	updates = make([]Package, rows.Length()-1) // тк первая строка заголовочная
 	rows.EachWithBreak(func(i int, selection *goquery.Selection) bool {
 		if i == 0 {
@@ -112,7 +85,7 @@ func getListUpdates(b []byte) (updates []Package, err error) {
 
 		cols := selection.Find("td")
 		if cols.Length() != 4 {
-			err = fmt.Errorf("Количество столбцов не равено 4. Возможно изменилась верстка страницы %s. ",
+			err = fmt.Errorf("Количество столбцов не равно 4. Возможно изменилась верстка страницы %s. ",
 				listUpdatesURL)
 		}
 		index := i - 1
