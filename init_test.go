@@ -6,8 +6,9 @@ import (
 )
 
 var (
-	cTest        *Client
-	testPackages []Package
+	cTest             *Client
+	testPackages      []Package
+	testReferenceRows ReferenceRows
 )
 
 const (
@@ -21,8 +22,12 @@ func init() {
 
 	cTest = NewClient(nil)
 
+	if testReferenceRows, err = cTest.GetReferenceRows(); err != nil {
+		log.Fatalln(err)
+	}
+
 	d := time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC)
-	if testPackages, err = cTest.GetPackages(&d); err != nil {
+	if testPackages, err = testReferenceRows.GetUpdatePackages(&d); err != nil {
 		log.Fatalln(err)
 	}
 

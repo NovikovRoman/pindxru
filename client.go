@@ -4,18 +4,18 @@ import (
 	"archive/zip"
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/LindsayBradford/go-dbf/godbf"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"time"
 )
 
 const (
-	rootURL = "https://www.pochta.ru"
-	// fullZipURL     = rootURL + "/documents/10231/6755366698/PIndx.zip/912561e7-9221-49d7-9fc9-5673eb04cd40" //"/PIndx.zip"*/
+	rootURL        = "https://www.pochta.ru"
 	listUpdatesURL = rootURL + "/database/ops"
 	fileEncoding   = "cp866"
 )
@@ -24,8 +24,6 @@ const (
 type Client struct {
 	httpClient *http.Client
 	transport  *http.Transport
-	page       []byte
-	fullZipURL string
 }
 
 // NewClient create new pindxru Client.
@@ -41,36 +39,93 @@ func NewClient(transport *http.Transport) *Client {
 	}
 }
 
-// GetLastModified возвращает дату последнего обновления из web-справочника.
-func (c Client) GetLastModified() (lastMod time.Time, err error) {
-	var packages []Package
-
-	if packages, err = c.GetPackages(nil); err != nil || len(packages) == 0 {
+func (c *Client) GetReferenceRows() (referenceRows ReferenceRows, err error) {
+	var b []byte
+	if b, err = c.loadPage(); err != nil {
 		return
 	}
 
-	lastMod = packages[len(packages)-1].Date
+	referenceRows, err = c.parseReferenceRows(b)
 	return
 }
 
-// Indexes возвращает все почтовые индексы из web-справочника.
-func (c Client) Indexes(lastModified *time.Time) (indexes []PIndx, lastMod time.Time, err error) {
+func (c *Client) parseReferenceRows(b []byte) (referenceRows ReferenceRows, err error) {
+	content := regexp.MustCompile(`(?si)"(Эталонный\\x20справочник\\x20почтовых.+?)"`).FindSubmatch(b)
+	if len(content) == 0 {
+		err = errors.New("Не найден контент. ")
+		return
+	}
+
+	matches := regexp.MustCompile(`(?si)(\\x([0-9a-f]{2}))`).FindAllStringSubmatch(string(content[1]), -1)
+	processed := map[string]bool{}
+	for _, m := range matches {
+		var (
+			i int64
+			e error
+		)
+		if _, ok := processed[m[1]]; ok {
+			continue
+		}
+
+		processed[m[2]] = true
+
+		switch m[2] {
+		case "a0":
+			i = 32
+
+		case "ab", "bb":
+			i = 34
+
+		default:
+			i, e = strconv.ParseInt(m[2], 16, 16)
+			if e != nil {
+				log.Fatalln(e)
+			}
+		}
+
+		content[1] = regexp.MustCompile(`(?si)(\\x`+string(m[2])+")").ReplaceAll(content[1], []byte{uint8(i)})
+	}
+
+	re := regexp.MustCompile(`(?si)\|\s*(\d{2}\.\d{2}\.\d{4})\s*\|\s*(\d+)\s*\|\s*\[NPIndx.+?]\((.+?)\).+?(\d+)\s+запи.+?\s*\|\s*\[PIndx.+?]\((.+?)\).+?(\d+)\s+запи.+?\s*\|\s`)
+	rows := re.FindAllSubmatch(content[1], -1)
+
+	referenceRows = make([]ReferenceRow, len(rows))
+	for i, r := range rows {
+		referenceRows[i] = ReferenceRow{
+			Number: string(r[2]),
+			Update: ReferenceFile{
+				Url: rootURL + string(r[3]),
+			},
+			Full: ReferenceFile{
+				Url: rootURL + string(r[5]),
+			},
+		}
+		referenceRows[i].Date, _ = time.Parse("02.01.2006", string(r[1]))
+		referenceRows[i].Update.Records, _ = strconv.Atoi(string(r[4]))
+		referenceRows[i].Full.Records, _ = strconv.Atoi(string(r[6]))
+	}
+	return
+}
+
+// Indexes Возвращает все почтовые индексы из web-справочника.
+func (c *Client) Indexes(referenceRows ReferenceRows, lastModified *time.Time) (indexes []PIndx, lastMod time.Time, err error) {
 	var (
 		b  []byte
 		ok bool
 	)
 
+	if len(referenceRows) == 0 {
+		return
+	}
+
 	if lastModified != nil {
-		if ok, err = c.hasUpdates(*lastModified); err != nil || !ok {
+		if ok, err = referenceRows.hasUpdates(*lastModified); err != nil || !ok {
 			return
 		}
 	}
 
-	if err = c.getFullZipURL(); err != nil {
-		return
-	}
-
-	if b, lastMod, err = c.downloadZip(c.fullZipURL); err != nil {
+	lastRow, _ := referenceRows.LastRow()
+	if b, lastMod, err = c.downloadZip(lastRow.Full.Url); err != nil {
 		return
 	}
 
@@ -78,42 +133,25 @@ func (c Client) Indexes(lastModified *time.Time) (indexes []PIndx, lastMod time.
 	return
 }
 
-// IndexesZip загружает zip-файл со всеми почтовыми индексами.
-func (c Client) IndexesZip(fname string, perm os.FileMode, lastMod *time.Time) (modify time.Time, ok bool, err error) {
-	if lastMod != nil {
-		if ok, err = c.hasUpdates(*lastMod); err != nil || !ok {
-			return
-		}
-	}
-
-	if err = c.getFullZipURL(); err != nil {
-		return
-	}
-
-	ok = true
+// IndexesZip Загружает zip-файл со всеми почтовыми индексами.
+func (c Client) IndexesZip(referenceRows ReferenceRows, fname string, perm os.FileMode, lastMod *time.Time) (modify time.Time, ok bool, err error) {
 	var b []byte
-	if b, modify, err = c.downloadZip(c.fullZipURL); err != nil {
+	if b, modify, ok, err = c.getFullZip(referenceRows, lastMod); err != nil || !ok {
 		return
 	}
-	err = ioutil.WriteFile(fname, b, perm)
+
+	if len(b) > 0 {
+		err = ioutil.WriteFile(fname, b, perm)
+	}
+
+	ok = err == nil
 	return
 }
 
-// IndexesDbf загружает dbf-файл со всеми почтовыми индексами.
-func (c Client) IndexesDbf(fname string, perm os.FileMode, lastMod *time.Time) (modify time.Time, ok bool, err error) {
-	if lastMod != nil {
-		if ok, err = c.hasUpdates(*lastMod); err != nil || !ok {
-			return
-		}
-	}
-
-	if err = c.getFullZipURL(); err != nil {
-		return
-	}
-
-	ok = true
+// IndexesDbf Загружает dbf-файл со всеми почтовыми индексами.
+func (c Client) IndexesDbf(referenceRows ReferenceRows, fname string, perm os.FileMode, lastMod *time.Time) (modify time.Time, ok bool, err error) {
 	var b []byte
-	if b, modify, err = c.downloadZip(c.fullZipURL); err != nil {
+	if b, modify, ok, err = c.getFullZip(referenceRows, lastMod); err != nil || !ok {
 		return
 	}
 
@@ -121,33 +159,33 @@ func (c Client) IndexesDbf(fname string, perm os.FileMode, lastMod *time.Time) (
 		return
 	}
 
-	err = ioutil.WriteFile(fname, b, perm)
+	if len(b) > 0 {
+		err = ioutil.WriteFile(fname, b, perm)
+	}
+
+	ok = err == nil
 	return
 }
 
-// GetPackages возвращает список обновлений начиная от даты >= lastModified.
-func (c Client) GetPackages(lastModified *time.Time) (packages []Package, err error) {
-	var (
-		l []Package
-	)
-
-	if err = c.loadPage(); err != nil {
+// getFullZip Возвращает последнее полное обновление.
+//
+// Если не указана lastMod, то самая последняя запись.
+//
+// Если lastMod указана, то если есть запись после указаной даты.
+func (c *Client) getFullZip(referenceRows ReferenceRows, lastMod *time.Time) (b []byte, modify time.Time, ok bool, err error) {
+	if len(referenceRows) == 0 {
 		return
 	}
 
-	if l, err = getListUpdates(c.page); err != nil {
-		return
-	}
-
-	packages = []Package{}
-	for _, i := range l {
-		if lastModified != nil && i.Date.Before(*lastModified) {
-			continue
+	if lastMod != nil {
+		if ok, err = referenceRows.hasUpdates(*lastMod); err != nil || !ok {
+			return
 		}
-
-		packages = append(packages, i)
 	}
 
+	ok = true
+	lastRow, _ := referenceRows.LastRow()
+	b, modify, err = c.downloadZip(lastRow.Full.Url)
 	return
 }
 
@@ -187,57 +225,19 @@ func (c Client) PackageDbf(pack Package, filename string, perm os.FileMode) (las
 	return
 }
 
-func (c *Client) loadPage() (err error) {
+func (c *Client) loadPage() (b []byte, err error) {
 	var (
 		resp *http.Response
 	)
 
-	if len(c.page) == 0 {
-		if resp, err = c.httpClient.Get(listUpdatesURL); err != nil {
-			return
-		}
-
-		if c.page, err = getBody(resp); err != nil {
-			return
-		}
+	if resp, err = c.httpClient.Get(listUpdatesURL); err != nil {
+		return
 	}
-
+	b, err = getBody(resp)
 	return
 }
 
-func (c *Client) getFullZipURL() (err error) {
-	if c.fullZipURL != "" {
-		return
-	}
-
-	if err = c.loadPage(); err != nil {
-		return
-	}
-
-	m := regexp.MustCompile(`(?si)<a\s+href="([^"]+)"[^>]*>\s*Эталонный\s+справочник\s+почтовых\s+индексов`).
-		FindAllSubmatch(c.page, 1)
-	if len(m) < 1 {
-		err = errors.New("Не найдена ссылка на общий zip-файл. ")
-		return
-	}
-
-	c.fullZipURL = fmt.Sprintf("%s%s", rootURL, m[0][1])
-	return
-}
-
-// hasUpdates есть ли обновление.
-func (c Client) hasUpdates(lastModified time.Time) (ok bool, err error) {
-	var lastMod time.Time
-	lastMod, err = c.GetLastModified()
-	if err != nil {
-		return
-	}
-
-	ok = !(lastModified.Equal(lastMod) || lastModified.After(lastMod))
-	return
-}
-
-// downloadZip загружает zip-файл из web-справочника.
+// downloadZip Загружает zip-файл из web-справочника.
 func (c Client) downloadZip(u string) (b []byte, lastMod time.Time, err error) {
 	resp, err := c.httpClient.Get(u)
 	if err != nil {

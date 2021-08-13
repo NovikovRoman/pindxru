@@ -8,15 +8,8 @@ import (
 	"time"
 )
 
-func Test_GetLastModified(t *testing.T) {
-	d, err := cTest.GetLastModified()
-	require.Nil(t, err)
-	require.IsType(t, d, time.Time{})
-	require.False(t, d.IsZero())
-}
-
 func Test_Indexes(t *testing.T) {
-	u, d, err := cTest.Indexes(nil)
+	u, d, err := cTest.Indexes(testReferenceRows, nil)
 	require.Nil(t, err)
 	require.IsType(t, d, time.Time{})
 	require.False(t, d.IsZero())
@@ -24,14 +17,14 @@ func Test_Indexes(t *testing.T) {
 
 	// (!) обновлений нет
 	lastMod := time.Now().Add(time.Hour * 1000)
-	u, d, err = cTest.Indexes(&lastMod)
+	u, d, err = cTest.Indexes(testReferenceRows, &lastMod)
 	require.Nil(t, err)
 	require.IsType(t, d, time.Time{})
 	require.True(t, d.IsZero())
 	require.Len(t, u, 0)
 
 	lastMod = time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC)
-	u, d, err = cTest.Indexes(&lastMod)
+	u, d, err = cTest.Indexes(testReferenceRows, &lastMod)
 	require.Nil(t, err)
 	require.IsType(t, d, time.Time{})
 	require.False(t, d.IsZero())
@@ -40,7 +33,7 @@ func Test_Indexes(t *testing.T) {
 
 func Test_IndexesZip(t *testing.T) {
 	filename := filepath.Join(testdata, "indexes-"+testZipFile)
-	lastMod, ok, err := cTest.IndexesZip(filename, os.ModePerm, nil)
+	lastMod, ok, err := cTest.IndexesZip(testReferenceRows, filename, os.ModePerm, nil)
 	require.Nil(t, err)
 	require.True(t, ok)
 	require.False(t, lastMod.IsZero())
@@ -50,13 +43,13 @@ func Test_IndexesZip(t *testing.T) {
 	filename = filepath.Join(testdata, "indexesWithDate-"+testZipFile)
 	// (!) обновлений нет
 	d := time.Now().Add(time.Hour * 1000)
-	lastMod, ok, err = cTest.IndexesZip(filename, os.ModePerm, &d)
+	lastMod, ok, err = cTest.IndexesZip(testReferenceRows, filename, os.ModePerm, &d)
 	require.Nil(t, err)
 	require.False(t, ok)
 	require.True(t, lastMod.IsZero())
 
 	d = time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC)
-	lastMod, ok, err = cTest.IndexesZip(filename, os.ModePerm, &d)
+	lastMod, ok, err = cTest.IndexesZip(testReferenceRows, filename, os.ModePerm, &d)
 	require.Nil(t, err)
 	require.True(t, ok)
 	require.False(t, lastMod.IsZero())
@@ -66,7 +59,7 @@ func Test_IndexesZip(t *testing.T) {
 
 func Test_IndexesDbf(t *testing.T) {
 	filename := filepath.Join(testdata, "indexes-"+testDbfFile)
-	lastMod, ok, err := cTest.IndexesDbf(filename, os.ModePerm, nil)
+	lastMod, ok, err := cTest.IndexesDbf(testReferenceRows, filename, os.ModePerm, nil)
 	require.Nil(t, err)
 	require.True(t, ok)
 	require.False(t, lastMod.IsZero())
@@ -76,13 +69,13 @@ func Test_IndexesDbf(t *testing.T) {
 	filename = filepath.Join(testdata, "indexesWithDate-"+testDbfFile)
 	// (!) обновлений нет
 	d := time.Now().Add(time.Hour * 1000)
-	lastMod, ok, err = cTest.IndexesDbf(filename, os.ModePerm, &d)
+	lastMod, ok, err = cTest.IndexesDbf(testReferenceRows, filename, os.ModePerm, &d)
 	require.Nil(t, err)
 	require.False(t, ok)
 	require.True(t, lastMod.IsZero())
 
 	d = time.Date(2018, 01, 01, 0, 0, 0, 0, time.UTC)
-	lastMod, ok, err = cTest.IndexesDbf(filename, os.ModePerm, &d)
+	lastMod, ok, err = cTest.IndexesDbf(testReferenceRows, filename, os.ModePerm, &d)
 	require.Nil(t, err)
 	require.True(t, ok)
 	require.False(t, lastMod.IsZero())
@@ -93,7 +86,7 @@ func Test_IndexesDbf(t *testing.T) {
 func Test_Packages(t *testing.T) {
 	// (!) обновлений нет
 	d := time.Now().Add(time.Hour * 1000)
-	pack, err := cTest.GetPackages(&d)
+	pack, err := testReferenceRows.GetUpdatePackages(&d)
 	require.Nil(t, err)
 	require.Len(t, pack, 0)
 
@@ -129,10 +122,4 @@ func testCheckFile(t *testing.T, filename string) {
 	require.True(t, fi.Size() > 0)
 
 	require.Nil(t, os.Remove(filename))
-}
-
-func TestClient_getFullZipURL(t *testing.T) {
-	err := cTest.getFullZipURL()
-	require.Nil(t, err)
-	require.True(t, cTest.fullZipURL != "")
 }
