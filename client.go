@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/LindsayBradford/go-dbf/godbf"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -50,45 +49,14 @@ func (c *Client) GetReferenceRows() (referenceRows ReferenceRows, err error) {
 }
 
 func (c *Client) parseReferenceRows(b []byte) (referenceRows ReferenceRows, err error) {
-	content := regexp.MustCompile(`(?si)"(Эталонный\\x20справочник\\x20почтовых.+?)"`).FindSubmatch(b)
+	content := regexp.MustCompile(`(?si)<table[^>]*>.+?<td[^>]*>Обновленный эталонный справочник.+?</tr>(.+?)</table>`).FindSubmatch(b)
 	if len(content) == 0 {
 		err = errors.New("Не найден контент. ")
 		return
 	}
 
-	matches := regexp.MustCompile(`(?si)(\\x([0-9a-f]{2}))`).FindAllStringSubmatch(string(content[1]), -1)
-	processed := map[string]bool{}
-	for _, m := range matches {
-		var (
-			i int64
-			e error
-		)
-		if _, ok := processed[m[1]]; ok {
-			continue
-		}
-
-		processed[m[2]] = true
-
-		switch m[2] {
-		case "a0":
-			i = 32
-
-		case "ab", "bb":
-			i = 34
-
-		default:
-			i, e = strconv.ParseInt(m[2], 16, 16)
-			if e != nil {
-				log.Fatalln(e)
-			}
-		}
-
-		content[1] = regexp.MustCompile(`(?si)(\\x`+string(m[2])+")").ReplaceAll(content[1], []byte{uint8(i)})
-	}
-
-	re := regexp.MustCompile(`(?si)\|\s*(\d{2}\.\d{2}\.\d{4})\s*\|\s*(\d+)\s*\|\s*\[NPIndx.+?]\((.+?)\).+?(\d+)\s+запи.+?\s*\|\s*\[PIndx.+?]\((.+?)\).+?(\d+)\s+запи.+?\s*\|\s`)
+	re := regexp.MustCompile(`(?si)<tr[^>]*><td[^>]*>\s*(\d{2}\.\d{2}\.\d{4})\s*.+?<td[^>]*>\s*(\d+)\s*.+?<td[^>]*>.+?href="(.+?)".+?</a>.+?(\d+)(?:\s+|&nbsp;| )запис.+?href="(.+?)".+?</a>.+?(\d+)(?:\s+|&nbsp;| )запис`)
 	rows := re.FindAllSubmatch(content[1], -1)
-
 	referenceRows = make([]ReferenceRow, len(rows))
 	for i, r := range rows {
 		referenceRows[i] = ReferenceRow{
@@ -125,10 +93,11 @@ func (c *Client) Indexes(referenceRows ReferenceRows, lastModified *time.Time) (
 	}
 
 	lastRow, _ := referenceRows.LastRow()
-	if b, lastMod, err = c.downloadZip(lastRow.Full.Url); err != nil {
+	if b, err = c.downloadZip(lastRow.Full.Url); err != nil {
 		return
 	}
 
+	lastMod = lastRow.Date
 	indexes, err = c.unzipPIndex(b)
 	return
 }
@@ -185,25 +154,26 @@ func (c *Client) getFullZip(referenceRows ReferenceRows, lastMod *time.Time) (b 
 
 	ok = true
 	lastRow, _ := referenceRows.LastRow()
-	b, modify, err = c.downloadZip(lastRow.Full.Url)
+	modify = lastRow.Date
+	b, err = c.downloadZip(lastRow.Full.Url)
 	return
 }
 
 // GetPackageIndexes получает изменения.
 func (c Client) GetPackageIndexes(pack *Package) (lastMod time.Time, err error) {
 	var b []byte
-	if b, lastMod, err = c.downloadZip(pack.Url); err != nil {
+	if b, err = c.downloadZip(pack.Url); err != nil {
 		return
 	}
 
-	pack.Indexes, err = c.unzipNPIndx(b)
-	return lastMod, err
+	pack.Indexes, lastMod, err = c.unzipNPIndx(b)
+	return
 }
 
 // PackageZip загружает zip-файл пакета изменений.
-func (c Client) PackageZip(pack Package, filename string, perm os.FileMode) (lastMod time.Time, err error) {
+func (c Client) PackageZip(pack Package, filename string, perm os.FileMode) (err error) {
 	var b []byte
-	if b, lastMod, err = c.downloadZip(pack.Url); err != nil {
+	if b, err = c.downloadZip(pack.Url); err != nil {
 		return
 	}
 	err = ioutil.WriteFile(filename, b, perm)
@@ -211,9 +181,9 @@ func (c Client) PackageZip(pack Package, filename string, perm os.FileMode) (las
 }
 
 // PackageDbf загружает dbf-файл пакета изменений.
-func (c Client) PackageDbf(pack Package, filename string, perm os.FileMode) (lastMod time.Time, err error) {
+func (c Client) PackageDbf(pack Package, filename string, perm os.FileMode) (err error) {
 	var b []byte
-	if b, lastMod, err = c.downloadZip(pack.Url); err != nil {
+	if b, err = c.downloadZip(pack.Url); err != nil {
 		return
 	}
 
@@ -238,13 +208,12 @@ func (c *Client) loadPage() (b []byte, err error) {
 }
 
 // downloadZip Загружает zip-файл из web-справочника.
-func (c Client) downloadZip(u string) (b []byte, lastMod time.Time, err error) {
-	resp, err := c.httpClient.Get(u)
-	if err != nil {
+func (c Client) downloadZip(u string) (b []byte, err error) {
+	var resp *http.Response
+	if resp, err = c.httpClient.Get(u); err != nil {
 		return
 	}
 
-	lastMod, err = time.Parse(time.RFC1123, resp.Header.Get("Last-Modified"))
 	b, err = getBody(resp)
 	return
 }
@@ -265,7 +234,7 @@ func (c Client) unzipPIndex(file []byte) (indexes []PIndx, err error) {
 }
 
 // unzipNPIndx распаковывает индексы из zip-файла.
-func (c Client) unzipNPIndx(file []byte) (indexes []NPIndx, err error) {
+func (c Client) unzipNPIndx(file []byte) (indexes []NPIndx, lastMod time.Time, err error) {
 	file, err = c.unzipDbf(file)
 	if err != nil {
 		return
@@ -275,7 +244,16 @@ func (c Client) unzipNPIndx(file []byte) (indexes []NPIndx, err error) {
 	if table, err = godbf.NewFromByteArray(file, fileEncoding); err != nil {
 		return
 	}
-	indexes, err = dbfToNPIndx(table)
+
+	if indexes, err = dbfToNPIndx(table); err != nil {
+		return
+	}
+
+	for _, i := range indexes {
+		if i.UpdatedAt.After(lastMod) {
+			lastMod = i.UpdatedAt
+		}
+	}
 	return
 }
 
@@ -292,12 +270,11 @@ func (c Client) unzipDbf(b []byte) (unzipBytes []byte, err error) {
 			continue
 		}
 
-		unzipBytes, err = readZipFile(zipFile)
-		if err != nil {
-			return nil, err
+		if unzipBytes, err = readZipFile(zipFile); err != nil {
+			return
 		}
 		break
 	}
 
-	return unzipBytes, nil
+	return
 }

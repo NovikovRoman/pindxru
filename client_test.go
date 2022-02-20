@@ -98,18 +98,16 @@ func Test_Packages(t *testing.T) {
 
 func Test_PackageZip(t *testing.T) {
 	filename := filepath.Join(testdata, "package-"+testZipFile)
-	lastMod, err := cTest.PackageZip(testPackages[0], filename, os.ModePerm)
+	err := cTest.PackageZip(testPackages[0], filename, os.ModePerm)
 	require.Nil(t, err)
-	require.False(t, lastMod.IsZero())
 
 	testCheckFile(t, filename)
 }
 
 func Test_PackageDbf(t *testing.T) {
 	filename := filepath.Join(testdata, "package-"+testDbfFile)
-	lastMod, err := cTest.PackageDbf(testPackages[0], filename, os.ModePerm)
+	err := cTest.PackageDbf(testPackages[0], filename, os.ModePerm)
 	require.Nil(t, err)
-	require.False(t, lastMod.IsZero())
 
 	testCheckFile(t, filename)
 }
