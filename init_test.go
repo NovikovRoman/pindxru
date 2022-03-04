@@ -2,6 +2,9 @@ package pindxru
 
 import (
 	"log"
+	"net/http"
+	"net/url"
+	"os"
 	"time"
 )
 
@@ -18,9 +21,16 @@ const (
 )
 
 func init() {
-	var err error
+	var (
+		transport *http.Transport
+		err       error
+	)
 
-	cTest = NewClient(nil)
+	if transport, err = getTransportTest(); err != nil {
+		log.Fatalln(err)
+	}
+
+	cTest = NewClient(transport)
 
 	if testReferenceRows, err = cTest.GetReferenceRows(); err != nil {
 		log.Fatalln(err)
@@ -40,4 +50,25 @@ func init() {
 			log.Fatalln(p, "Ошибочные данные в пакетах.")
 		}
 	}
+}
+
+func getTransportTest() (transport *http.Transport, err error) {
+	var (
+		u     *url.URL
+		proxy string
+	)
+
+	if proxy = os.Getenv("PROXY"); proxy == "" {
+		return
+	}
+
+	if u, err = url.Parse(proxy); err != nil {
+		return
+	}
+
+	transport = &http.Transport{
+		Proxy: http.ProxyURL(u),
+	}
+
+	return
 }
