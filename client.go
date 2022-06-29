@@ -220,8 +220,7 @@ func (c Client) downloadZip(u string) (b []byte, err error) {
 
 // unzipPIndex распаковывает индексы из zip-файла.
 func (c Client) unzipPIndex(file []byte) (indexes []PIndx, err error) {
-	file, err = c.unzipDbf(file)
-	if err != nil {
+	if file, err = c.unzipDbf(file); err != nil {
 		return
 	}
 

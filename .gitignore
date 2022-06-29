@@ -1,4 +1,5 @@
 .idea/
 TODO.md
+tmp/
 testdata/**/*test.zip
 testdata/**/*test.dbf
