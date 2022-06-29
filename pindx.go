@@ -98,8 +98,10 @@ func createNPIndx(data []string) (p NPIndx, err error) {
 	}
 
 	var updatedAt time.Time
-	if updatedAt, err = time.Parse("20060102", data[10]); err != nil {
-		return
+	if data[10] != "" {
+		if updatedAt, err = time.Parse("20060102", data[10]); err != nil {
+			return
+		}
 	}
 
 	p = NPIndx{

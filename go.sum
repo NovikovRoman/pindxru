@@ -1,9 +1,5 @@
 github.com/LindsayBradford/go-dbf v0.0.0-20181231101525-2903f14c3497 h1:SXGAT+uYnZ4DnvE+eYEesvr29Siu5tPAeFRW+SNg6LE=
 github.com/LindsayBradford/go-dbf v0.0.0-20181231101525-2903f14c3497/go.mod h1:qdu82Ln+nICW/paTv7Y/F3AEoikB+HbF/yhzsWivjH8=
-github.com/LindsayBradford/go-dbf v0.0.0-20211130222030-db332bd32b8a h1:MCCgcxyiI4u1tbF9jbgaV98xqFNgLmKOna2efG5i/VI=
-github.com/LindsayBradford/go-dbf v0.0.0-20211130222030-db332bd32b8a/go.mod h1:qdu82Ln+nICW/paTv7Y/F3AEoikB+HbF/yhzsWivjH8=
-github.com/LindsayBradford/go-dbf v1.0.0-alpha.1 h1:oEHqx8ZPSCTHBOm7Ap4NQ2lzIrITJ/q113DJKaQ/x0I=
-github.com/LindsayBradford/go-dbf v1.0.0-alpha.1/go.mod h1:qdu82Ln+nICW/paTv7Y/F3AEoikB+HbF/yhzsWivjH8=
 github.com/axgle/mahonia v0.0.0-20180208002826-3358181d7394 h1:OYA+5W64v3OgClL+IrOD63t4i/RW7RqrAVl9LTZ9UqQ=
 github.com/axgle/mahonia v0.0.0-20180208002826-3358181d7394/go.mod h1:Q8n74mJTIgjX4RBBcHnJ05h//6/k6foqmgE45jTQtxg=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
