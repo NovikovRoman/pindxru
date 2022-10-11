@@ -2,6 +2,8 @@ github.com/NovikovRoman/godbf v0.1.1 h1:tAvDKVhijmHLIBRLBin4jhf18ysQFTn7NUfUR5S3
 github.com/NovikovRoman/godbf v0.1.1/go.mod h1:zjrAtN+6Ds0FcZONo8sYfIzDSLyiVhgws0mCzKRIYHQ=
 github.com/NovikovRoman/godbf v0.1.2 h1:xU6TBUOwX+bp8YkdC6JpgtikgSDFmVT4ctOaJqj/N1g=
 github.com/NovikovRoman/godbf v0.1.2/go.mod h1:QB4x6dygWOYMbuyPjU2BALjfQKts/IbpMyTl4vkq1so=
+github.com/NovikovRoman/godbf v0.2.0 h1:mY/Aij4cb9nC4POPd01vabLYxKhvFFHUyJQTeQQAKcs=
+github.com/NovikovRoman/godbf v0.2.0/go.mod h1:QB4x6dygWOYMbuyPjU2BALjfQKts/IbpMyTl4vkq1so=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
