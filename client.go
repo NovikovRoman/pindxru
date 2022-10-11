@@ -4,20 +4,23 @@ import (
 	"archive/zip"
 	"bytes"
 	"errors"
-	"github.com/LindsayBradford/go-dbf/godbf"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/NovikovRoman/godbf"
+	"golang.org/x/text/encoding/charmap"
 )
 
 const (
 	rootURL        = "https://www.pochta.ru"
 	listUpdatesURL = rootURL + "/database/ops"
-	fileEncoding   = "cp866"
 )
+
+var fileEncoding = charmap.CodePage866
 
 // Client structure.
 type Client struct {

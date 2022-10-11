@@ -3,7 +3,7 @@ package pindxru
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/LindsayBradford/go-dbf/godbf"
+	"github.com/NovikovRoman/godbf"
 	"io/ioutil"
 	"net/http"
 )
