@@ -3,9 +3,10 @@ package pindxru
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/NovikovRoman/godbf"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/NovikovRoman/godbf"
 )
 
 func dbfToPIndx(table *godbf.DbfTable) ([]PIndx, error) {
