@@ -43,7 +43,7 @@ func (r ReferenceRows) GetUpdatePackages(lastModified *time.Time) (packages []Pa
 	packages = []Package{}
 
 	for _, rr := range r {
-		if lastModified != nil && rr.Date.Before(*lastModified) {
+		if lastModified != nil && (rr.Date.Before(*lastModified) || rr.Date.Equal(*lastModified)) {
 			continue
 		}
 
