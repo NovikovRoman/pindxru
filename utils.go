@@ -3,7 +3,7 @@ package pindxru
 import (
 	"archive/zip"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/NovikovRoman/godbf"
@@ -49,7 +49,7 @@ func readZipFile(zf *zip.File) (body []byte, error error) {
 		}
 	}()
 
-	body, err = ioutil.ReadAll(f)
+	body, err = io.ReadAll(f)
 	return
 }
 
@@ -60,6 +60,6 @@ func getBody(resp *http.Response) (body []byte, err error) {
 		}
 	}()
 
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
 	return
 }

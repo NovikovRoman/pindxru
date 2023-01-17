@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"errors"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
@@ -17,7 +16,7 @@ import (
 
 const (
 	rootURL        = "https://www.pochta.ru"
-	listUpdatesURL = rootURL + "/database/ops"
+	listUpdatesURL = rootURL + "/support/database/ops"
 )
 
 var fileEncoding = charmap.CodePage866
@@ -113,7 +112,7 @@ func (c Client) IndexesZip(referenceRows ReferenceRows, fname string, perm os.Fi
 	}
 
 	if len(b) > 0 {
-		err = ioutil.WriteFile(fname, b, perm)
+		err = os.WriteFile(fname, b, perm)
 	}
 
 	ok = err == nil
@@ -132,7 +131,7 @@ func (c Client) IndexesDbf(referenceRows ReferenceRows, fname string, perm os.Fi
 	}
 
 	if len(b) > 0 {
-		err = ioutil.WriteFile(fname, b, perm)
+		err = os.WriteFile(fname, b, perm)
 	}
 
 	ok = err == nil
@@ -179,7 +178,7 @@ func (c Client) PackageZip(pack Package, filename string, perm os.FileMode) (err
 	if b, err = c.downloadZip(pack.Url); err != nil {
 		return
 	}
-	err = ioutil.WriteFile(filename, b, perm)
+	err = os.WriteFile(filename, b, perm)
 	return
 }
 
@@ -194,7 +193,7 @@ func (c Client) PackageDbf(pack Package, filename string, perm os.FileMode) (err
 		return
 	}
 
-	err = ioutil.WriteFile(filename, b, perm)
+	err = os.WriteFile(filename, b, perm)
 	return
 }
 
